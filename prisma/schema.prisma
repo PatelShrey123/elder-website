@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Application {
+  id                String   @id @default(uuid())
+  discordId         String
+  discordUsername   String
+  discordGlobalName String?
+  discordAvatar     String?
+  ign               String
+  profileLink       String
+  level             Int
+  weeklyScore       Int
+  kdr               Float
+  region            String
+  trainerFought     String
+  trainerResult     String   // "WIN" or "LOSS"
+  proofLink         String
+  motivation        String
+  status            String   // "PENDING", "ACCEPTED", "DENIED"
+  officerNotes      String?
+  officerDiscordId  String?
+  officerUsername   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([discordId])
+  @@index([status])
+}
+
+model SystemSettings {
+  id         String   @id @default("config")
+  slotsLimit Int      @default(15)
+  trainers   String   // JSON string of trainers
+  updatedAt  DateTime @updatedAt
+}

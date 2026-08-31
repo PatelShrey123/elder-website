@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ⚡ Elder Clan — Ticket Application Website
 
-## Getting Started
+A full-stack, ticket-based clan recruitment website for the **Elder** clan (`kirka.io`), featuring **Jujutsu Kaisen / Gojo Satoru anime aesthetics**, real-time **Web Audio API synthesizer effects**, and **Discord OAuth2 role-based verification**.
 
-First, run the development server:
+---
 
+## 🌟 Key Features
+
+- **Gojo Satoru & Ryomen Sukuna Cutscenes**:
+  - Domain Clash: **Malevolent Shrine (伏魔御廚子) vs Infinite Void (無量空処)**.
+  - Gojo levitation (*"Throughout Heaven and Earth, I Alone Am The Honored One"*).
+  - **200% Hollow Purple (虚式「茈」)** laser cannon animation with screen-shake and synth audio.
+- **Discord OAuth2 Verification**:
+  - Automatically queries `GET /users/@me/guilds/{GUILD_ID}/member` via the user's OAuth access token (`identify guilds.members.read`).
+  - Protects the `/apply` route for users with the **Applicant Role** (`1501943775021371543`).
+  - Protects the `/staff` command panel for users with the **Officer Role** (`1369836381647405067`).
+- **Submission Rules & Rate Limiting**:
+  - Maximum **2 applications per calendar month** per user.
+  - Proof screenshot validation (PNG/JPG, max 5MB).
+  - Screenshots stored privately and viewed via HMAC cryptographic signed URLs (5-minute expiration).
+- **Dual Discord Webhooks**:
+  - **Webhook #1**: Styled embed broadcast to applications channel upon new ticket creation.
+  - **Webhook #2**: Decision announcements to decisions channel. Mentions the user `<@discord_id>` with their training link upon approval.
+- **Officer HQ (`/staff`) & Auto-Purge**:
+  - Officer inspection modal with temporary signed proof URLs.
+  - Live 48-hour expiration countdown timers for decided tickets.
+  - `/api/cron` cleanup route for automated 48-hour purging.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone & Install
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/PatelShrey123/elder-website.git
+cd elder-website
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env` and fill in your Discord credentials:
+```bash
+cp .env.example .env
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | SQLite path `file:./dev.db` (or Postgres / Supabase URL) |
+| `NEXTAUTH_URL` | `http://localhost:3000` (or your production Vercel domain) |
+| `NEXTAUTH_SECRET` | Random 32+ character secret string |
+| `DISCORD_CLIENT_ID` | Your Discord App Client ID (`1513453348462923907`) |
+| `DISCORD_CLIENT_SECRET` | Your Discord App OAuth2 Client Secret |
+| `DISCORD_BOT_TOKEN` | Your Discord Bot Token (optional, for DMs) |
+| `DISCORD_GUILD_ID` | Elder Discord Guild ID (`1369832704102633554`) |
+| `DISCORD_OFFICER_ROLE_ID` | Officer Role ID (`1369836381647405067`) |
+| `DISCORD_APPLICANT_ROLE_ID` | Applicant Role ID (`1501943775021371543`) |
+| `DISCORD_WEBHOOK_URL` | Discord webhook for incoming applications |
+| `DISCORD_DECISION_WEBHOOK_URL` | Discord webhook for decisions |
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### 3. Generate Prisma Database & Seed Trainers
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-## Learn More
+### 4. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🌐 Deploying to Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+1. Import the repository `PatelShrey123/elder-website` in [Vercel](https://vercel.com).
+2. Set the environment variables in your Vercel Project Settings.
+3. In your **Discord Developer Portal** under **OAuth2 > Redirects**, add your Vercel callback URL:
+   ```text
+   https://your-app.vercel.app/api/auth/callback/discord
+   ```

@@ -80,6 +80,11 @@ class SoundFx {
     osc.stop(now + 1.0);
   }
 
+  // Laser charge alias
+  playChargeLaser() {
+    this.playEnergyFusion();
+  }
+
   // Hollow Purple Catastrophic Laser Blast
   playHollowPurpleBeam() {
     if (!this.enabled) return;

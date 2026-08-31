@@ -1,14 +1,31 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import crypto from "crypto";
 
-const UPLOADS_DIR = path.join(process.cwd(), "private_uploads");
-const SECRET = process.env.NEXTAUTH_SECRET || "default-secret-for-signing-urls";
-
-// Ensure the private uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// Use OS temp dir on Vercel/Serverless or local private_uploads
+function getUploadDir(): string {
+  try {
+    const localDir = path.join(process.cwd(), "private_uploads");
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+    return localDir;
+  } catch {
+    // Serverless fallback (/tmp is writable on AWS Lambda / Vercel)
+    const tmpDir = path.join(os.tmpdir(), "elder_uploads");
+    try {
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn("Failed to create tmpDir, will use base64 storage:", e);
+    }
+    return tmpDir;
+  }
 }
+
+const SECRET = process.env.NEXTAUTH_SECRET || "default-secret-for-signing-urls";
 
 export interface UploadResult {
   success: boolean;
@@ -18,26 +35,38 @@ export interface UploadResult {
 }
 
 /**
- * Saves a file buffer to private storage
+ * Saves a file buffer to private storage or base64 fallback
  */
 export async function savePrivateFile(
   buffer: Buffer,
-  originalName: string
+  originalName: string,
+  mimeType: string = "image/png"
 ): Promise<UploadResult> {
   try {
-    const ext = path.extname(originalName).toLowerCase();
+    const ext = path.extname(originalName).toLowerCase() || ".png";
     const uniqueName = `${crypto.randomBytes(16).toString("hex")}${ext}`;
-    const filePath = path.join(UPLOADS_DIR, uniqueName);
+    const uploadDir = getUploadDir();
+    const filePath = path.join(uploadDir, uniqueName);
 
-    await fs.promises.writeFile(filePath, buffer);
-
-    return {
-      success: true,
-      filePath,
-      fileName: uniqueName,
-    };
+    try {
+      await fs.promises.writeFile(filePath, buffer);
+      return {
+        success: true,
+        filePath,
+        fileName: uniqueName,
+      };
+    } catch (fsErr) {
+      // If filesystem write fails on serverless, store as self-contained base64 data URL
+      console.warn("Filesystem write failed, falling back to data URL:", fsErr);
+      const base64Data = `data:${mimeType};base64,${buffer.toString("base64")}`;
+      return {
+        success: true,
+        filePath: base64Data,
+        fileName: base64Data,
+      };
+    }
   } catch (error: any) {
-    console.error("Error saving file to private storage:", error);
+    console.error("Error saving file to storage:", error);
     return {
       success: false,
       filePath: "",
@@ -51,8 +80,10 @@ export async function savePrivateFile(
  * Deletes a file from private storage
  */
 export async function deletePrivateFile(fileName: string): Promise<boolean> {
+  if (fileName.startsWith("data:")) return true;
   try {
-    const filePath = path.join(UPLOADS_DIR, fileName);
+    const uploadDir = getUploadDir();
+    const filePath = path.join(uploadDir, fileName);
     if (fs.existsSync(filePath)) {
       await fs.promises.unlink(filePath);
       return true;
@@ -66,9 +97,12 @@ export async function deletePrivateFile(fileName: string): Promise<boolean> {
 
 /**
  * Generates a temporary signed URL for a file
- * Expires in 5 minutes (300 seconds) by default
  */
 export function generateSignedUrl(fileName: string, expiresInSeconds: number = 300): string {
+  if (fileName.startsWith("data:")) {
+    return fileName;
+  }
+
   const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
   const payload = JSON.stringify({ fileName, exp: expiresAt });
   
@@ -80,7 +114,6 @@ export function generateSignedUrl(fileName: string, expiresInSeconds: number = 3
 
   const token = `${base64Payload}.${signature}`;
   
-  // Construct the URL pointing to the API route
   const siteUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   return `${siteUrl}/api/uploads/view?token=${token}`;
 }
@@ -95,7 +128,6 @@ export function verifySignedToken(token: string): string | null {
 
     const [base64Payload, signature] = parts;
     
-    // Verify signature
     const expectedSignature = crypto
       .createHmac("sha256", SECRET)
       .update(base64Payload)
@@ -106,7 +138,6 @@ export function verifySignedToken(token: string): string | null {
       return null;
     }
 
-    // Parse and verify expiration
     const payloadStr = Buffer.from(base64Payload, "base64url").toString("utf8");
     const { fileName, exp } = JSON.parse(payloadStr);
 
@@ -115,11 +146,10 @@ export function verifySignedToken(token: string): string | null {
       return null;
     }
 
-    // Return the safe absolute path
-    const safePath = path.join(UPLOADS_DIR, fileName);
+    const uploadDir = getUploadDir();
+    const safePath = path.join(uploadDir, fileName);
     
-    // Safety check to prevent directory traversal
-    if (!safePath.startsWith(UPLOADS_DIR)) {
+    if (!safePath.startsWith(uploadDir)) {
       console.warn("Directory traversal attempt blocked");
       return null;
     }

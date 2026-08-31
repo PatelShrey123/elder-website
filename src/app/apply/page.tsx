@@ -115,7 +115,14 @@ export default function Apply() {
         body: formData,
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || "Failed to submit application.");
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to submit application.");

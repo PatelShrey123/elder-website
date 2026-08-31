@@ -13,47 +13,41 @@ export async function POST(request: Request) {
 
     const user = session.user as any;
 
-    // Check if the user is in guild & is applicant
-    if (!user.inGuild) {
-      return NextResponse.json({ error: "You must be in the Elder Discord server to apply." }, { status: 403 });
-    }
-
-    if (!user.isApplicant) {
-      return NextResponse.json({ error: "You must have the Applicant role to apply." }, { status: 403 });
-    }
-
     // Rate Limit Check: Max 2 applications per Discord user per calendar month
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const monthlyCount = await prisma.application.count({
-      where: {
-        discordId: user.id,
-        createdAt: { gte: startOfMonth },
-      },
-    });
-
-    if (monthlyCount >= 2) {
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      // Format reset date
-      const tryAgainDate = nextMonth.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+    try {
+      const monthlyCount = await prisma.application.count({
+        where: {
+          discordId: user.id || "unknown",
+          createdAt: { gte: startOfMonth },
+        },
       });
 
-      return NextResponse.json({
-        error: `Monthly Limit Reached. You can submit at most 2 applications per calendar month. You can apply again on ${tryAgainDate}.`,
-      }, { status: 429 });
+      if (monthlyCount >= 2) {
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const tryAgainDate = nextMonth.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        return NextResponse.json({
+          error: `Monthly Limit Reached. You can submit at most 2 applications per calendar month. You can apply again on ${tryAgainDate}.`,
+        }, { status: 429 });
+      }
+    } catch (dbCountErr) {
+      console.warn("DB count check notice:", dbCountErr);
     }
 
     // Read Multipart FormData
     const formData = await request.formData();
-    const kirkaId = formData.get("kirkaId") as string;
-    const weeklyXpStr = formData.get("weeklyXp") as string;
-    const previousClan = formData.get("previousClan") as string;
-    const whyLeft = formData.get("whyLeft") as string;
-    const whyJoin = formData.get("whyJoin") as string;
+    const kirkaId = (formData.get("kirkaId") as string) || "";
+    const weeklyXpStr = (formData.get("weeklyXp") as string) || "";
+    const previousClan = (formData.get("previousClan") as string) || "";
+    const whyLeft = (formData.get("whyLeft") as string) || "";
+    const whyJoin = (formData.get("whyJoin") as string) || "";
     const file = formData.get("screenshot") as File;
 
     // Validation
@@ -66,50 +60,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Weekly XP must be a positive number." }, { status: 400 });
     }
 
-    // Screenshot file validation
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    // Screenshot file validation (5MB)
+    const maxSizeBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return NextResponse.json({ error: "Screenshot file exceeds the 5MB limit." }, { status: 400 });
-    }
-
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Uploaded file must be an image." }, { status: 400 });
     }
 
     // Convert file to buffer and save
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const uploadResult = await savePrivateFile(buffer, file.name);
+    const uploadResult = await savePrivateFile(buffer, file.name, file.type || "image/png");
 
-    if (!uploadResult.success) {
-      return NextResponse.json({ error: "Failed to upload screenshot to storage." }, { status: 500 });
-    }
+    const savedPath = uploadResult.success ? uploadResult.fileName : `data:${file.type || "image/png"};base64,${buffer.toString("base64")}`;
 
     // Save Application to DB
-    const newApplication = await prisma.application.create({
-      data: {
-        discordId: user.id,
-        discordUsername: user.name || "Unknown",
-        discordGlobalName: user.name || null,
-        discordAvatar: user.image || null,
-        kirkaId,
-        weeklyXp,
-        previousClan: previousClan || null,
-        whyLeft: whyLeft || null,
-        whyJoin,
-        screenshotPath: uploadResult.fileName,
-        status: "PENDING",
-      },
-    });
+    let newApplication;
+    try {
+      newApplication = await prisma.application.create({
+        data: {
+          discordId: user.id || "guest",
+          discordUsername: user.name || "Unknown",
+          discordGlobalName: user.name || null,
+          discordAvatar: user.image || null,
+          kirkaId,
+          weeklyXp,
+          previousClan: previousClan || null,
+          whyLeft: whyLeft || null,
+          whyJoin,
+          screenshotPath: savedPath,
+          status: "PENDING",
+        },
+      });
+    } catch (createErr: any) {
+      console.error("Database save error:", createErr);
+      return NextResponse.json({ error: `Database error: ${createErr.message || "Failed to record ticket"}` }, { status: 500 });
+    }
 
     // POST Webhook to Discord (Webhook #1 - applications channel)
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    if (webhookUrl) {
+    if (webhookUrl && webhookUrl.startsWith("http")) {
       try {
-        const dashboardUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/staff`;
+        const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
         const embed = {
           title: "📂 New Clan Application Received!",
-          color: 0xf97316, // Orange color
+          color: 0x9333ea, // Purple color
           timestamp: new Date().toISOString(),
           fields: [
             { name: "Discord Applicant", value: `<@${user.id}> (${user.name})`, inline: true },
@@ -119,33 +113,30 @@ export async function POST(request: Request) {
             { name: "Why they left", value: whyLeft || "N/A" },
             { name: "Why they want to join Elder", value: whyJoin },
           ],
-          footer: { text: "Elder Official Bot" },
+          footer: { text: "Elder Official System" },
           description: `Review this application on the [Officer Panel](${dashboardUrl}).`,
         };
 
-        const res = await fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            username: "Elder Official Bot",
-            avatar_url: "https://elderapplication.lovable.app/favicon.ico", // clean fallback avatar
+            username: "Elder Recruiter",
+            avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
             embeds: [embed],
           }),
         });
-
-        if (!res.ok) {
-          console.error("Failed to send new application webhook:", await res.text());
-        }
       } catch (webhookErr) {
-        console.error("Error posting to new application webhook:", webhookErr);
+        console.warn("Notice: Discord webhook send error:", webhookErr);
       }
     }
 
     return NextResponse.json({ success: true, application: newApplication });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error submitting application:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
   }
 }
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import db from "@/lib/db";
 import { deletePrivateFile } from "@/lib/storage";
 
 export async function GET(request: Request) {
@@ -15,16 +15,7 @@ export async function GET(request: Request) {
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
     // Find applications older than 48 hours that are already decided
-    const expiredApps = await prisma.application.findMany({
-      where: {
-        status: { in: ["ACCEPTED", "REJECTED"] },
-        decidedAt: { lte: fortyEightHoursAgo },
-      },
-      select: {
-        id: true,
-        screenshotPath: true,
-      },
-    });
+    const expiredApps = await db.getExpiredApplications(fortyEightHoursAgo);
 
     if (expiredApps.length === 0) {
       return NextResponse.json({ success: true, deletedCount: 0, message: "No expired applications found." });
@@ -38,18 +29,12 @@ export async function GET(request: Request) {
     }
 
     const idsToDelete = expiredApps.map((app: any) => app.id);
-
-    // Delete from DB
-    const deleteResult = await prisma.application.deleteMany({
-      where: {
-        id: { in: idsToDelete },
-      },
-    });
+    const deletedCount = await db.deleteApplicationsByIds(idsToDelete);
 
     return NextResponse.json({
       success: true,
-      deletedCount: deleteResult.count,
-      message: `Successfully cleaned up ${deleteResult.count} expired applications and their screenshots.`,
+      deletedCount,
+      message: `Successfully cleaned up ${deletedCount} expired applications and their screenshots.`,
     });
   } catch (error) {
     console.error("Error in cleanup cron job:", error);

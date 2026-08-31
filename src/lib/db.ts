@@ -47,17 +47,32 @@ if (activeUrl) {
   pool = globalThis.pgPoolGlobal;
 }
 
-// In-memory fallback if no DB connection
+// In-memory fallback
 declare global {
   var inMemoryAppsGlobal: any[] | undefined;
+  var inMemorySettingsGlobal: any | undefined;
 }
 if (!globalThis.inMemoryAppsGlobal) {
   globalThis.inMemoryAppsGlobal = [];
 }
+if (!globalThis.inMemorySettingsGlobal) {
+  globalThis.inMemorySettingsGlobal = {
+    slotsLimit: 20,
+    trainers: JSON.stringify([
+      { name: "[EGD]Fabin #KB4ACS", region: "GLOBAL" },
+      { name: "Carson/CertifiedLoser #V90LM3", region: "ASIA" },
+      { name: "Elena #VRVXZT", region: "ASIA" },
+      { name: "Ghoul #OM2Z2I", region: "ASIA" },
+      { name: "ElderGoonerDih #GNCCHM", region: "ASIA" },
+      { name: "NEKKI #FUYR7K", region: "ASIA" },
+      { name: "Sylkie #7FRZOY", region: "ASIA" },
+      { name: "Intrepidus #T2D70P", region: "ASIA" },
+      { name: "S_A_N_T_I #69I3DV", region: "EU" },
+      { name: "LuigiToan #ZSCKH5", region: "ASIA" },
+    ]),
+  };
+}
 
-/**
- * Initialize PostgreSQL table automatically
- */
 let tableInitialized = false;
 async function ensureTable() {
   if (!pool || tableInitialized) return;
@@ -79,6 +94,13 @@ async function ensureTable() {
         "decisionReason" TEXT,
         "decidedAt" TIMESTAMP WITH TIME ZONE,
         "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS "SystemSettings" (
+        "id" TEXT PRIMARY KEY DEFAULT 'config',
+        "slotsLimit" INTEGER NOT NULL DEFAULT 20,
+        "trainers" TEXT NOT NULL,
         "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
     `);
@@ -242,6 +264,76 @@ export const db = {
         (a) => a.discordId === discordId && new Date(a.createdAt) >= startOfMonth
       ).length || 0
     );
+  },
+
+  async getSettings() {
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(`SELECT * FROM "SystemSettings" WHERE "id" = 'config' LIMIT 1;`);
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.error("Postgres Settings SELECT error:", err);
+      }
+    }
+    return globalThis.inMemorySettingsGlobal;
+  },
+
+  async upsertSettings(slotsLimit: number, trainersJson: string) {
+    const now = new Date();
+    if (pool) {
+      try {
+        await ensureTable();
+        const query = `
+          INSERT INTO "SystemSettings" ("id", "slotsLimit", "trainers", "updatedAt")
+          VALUES ('config', $1, $2, $3)
+          ON CONFLICT ("id") DO UPDATE SET "slotsLimit" = $1, "trainers" = $2, "updatedAt" = $3
+          RETURNING *;
+        `;
+        const res = await pool.query(query, [slotsLimit, trainersJson, now]);
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.error("Postgres Settings UPSERT error:", err);
+      }
+    }
+    globalThis.inMemorySettingsGlobal = { slotsLimit, trainers: trainersJson };
+    return globalThis.inMemorySettingsGlobal;
+  },
+
+  async getExpiredApplications(olderThanDate: Date) {
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(
+          `SELECT "id", "screenshotPath" FROM "Application" WHERE "status" IN ('ACCEPTED', 'REJECTED') AND "decidedAt" <= $1;`,
+          [olderThanDate]
+        );
+        return res.rows || [];
+      } catch (err) {
+        console.error("Postgres Expired SELECT error:", err);
+      }
+    }
+    return (
+      globalThis.inMemoryAppsGlobal
+        ?.filter((a) => (a.status === "ACCEPTED" || a.status === "REJECTED") && new Date(a.decidedAt) <= olderThanDate)
+        .map((a) => ({ id: a.id, screenshotPath: a.screenshotPath })) || []
+    );
+  },
+
+  async deleteApplicationsByIds(ids: string[]) {
+    if (ids.length === 0) return 0;
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(`DELETE FROM "Application" WHERE "id" = ANY($1::text[]);`, [ids]);
+        return res.rowCount || 0;
+      } catch (err) {
+        console.error("Postgres DELETE error:", err);
+      }
+    }
+    const initialLen = globalThis.inMemoryAppsGlobal?.length || 0;
+    globalThis.inMemoryAppsGlobal = globalThis.inMemoryAppsGlobal?.filter((a) => !ids.includes(a.id));
+    return initialLen - (globalThis.inMemoryAppsGlobal?.length || 0);
   },
 };
 

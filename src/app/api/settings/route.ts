@@ -1,28 +1,22 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import db from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const settings = await prisma.systemSettings.findUnique({
-      where: { id: "config" },
-    });
-
-    if (!settings) {
-      return NextResponse.json({ error: "Settings not found" }, { status: 404 });
-    }
+    const settings = await db.getSettings();
 
     // Count accepted applications
-    const acceptedCount = await prisma.application.count({
-      where: { status: "ACCEPTED" },
-    });
+    const acceptedApps = await db.getApplications("ACCEPTED");
+    const acceptedCount = acceptedApps.length;
 
-    const parsedTrainers = JSON.parse(settings.trainers || "[]");
-    const slotsRemaining = Math.max(0, settings.slotsLimit - acceptedCount);
+    const parsedTrainers = JSON.parse(settings?.trainers || "[]");
+    const slotsLimit = settings?.slotsLimit || 20;
+    const slotsRemaining = Math.max(0, slotsLimit - acceptedCount);
 
     return NextResponse.json({
-      slotsLimit: settings.slotsLimit,
+      slotsLimit,
       slotsRemaining,
       trainers: parsedTrainers,
     });
@@ -50,24 +44,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid trainers list" }, { status: 400 });
     }
 
-    const updatedSettings = await prisma.systemSettings.upsert({
-      where: { id: "config" },
-      update: {
-        slotsLimit,
-        trainers: JSON.stringify(trainers),
-      },
-      create: {
-        id: "config",
-        slotsLimit,
-        trainers: JSON.stringify(trainers),
-      },
-    });
+    const updatedSettings = await db.upsertSettings(slotsLimit, JSON.stringify(trainers));
 
     return NextResponse.json({
       success: true,
       settings: {
         slotsLimit: updatedSettings.slotsLimit,
-        trainers: JSON.parse(updatedSettings.trainers),
+        trainers: typeof updatedSettings.trainers === "string" ? JSON.parse(updatedSettings.trainers) : updatedSettings.trainers,
       },
     });
   } catch (error) {

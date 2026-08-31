@@ -3,7 +3,7 @@
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, LayoutDashboard, ClipboardList, Home, Swords, Zap } from "lucide-react";
+import { LogOut, LayoutDashboard, ClipboardList, Home, Swords } from "lucide-react";
 import { sfx } from "@/lib/sound";
 
 export default function Header() {
@@ -17,16 +17,18 @@ export default function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-purple-500/15 bg-[#07050c]/85 backdrop-blur-xl">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         
-        {/* Logo with Gojo Cursed Energy Glow */}
+        {/* Official Elder Clan Logo Image */}
         <Link 
           href="/" 
           onMouseEnter={() => sfx.playHover()}
-          className="flex items-center space-x-2.5 group"
+          className="flex items-center space-x-3 group"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-cyan-400 p-0.5 shadow-[0_0_20px_rgba(168,85,247,0.5)] group-hover:shadow-[0_0_30px_rgba(6,182,212,0.8)] transition-all">
-            <div className="w-full h-full bg-[#0d091a] rounded-[10px] flex items-center justify-center">
-              <Zap className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
-            </div>
+          <div className="relative w-10 h-10 rounded-xl overflow-hidden p-[2px] bg-gradient-to-tr from-purple-600 via-pink-500 to-cyan-400 shadow-[0_0_20px_rgba(168,85,247,0.5)] group-hover:shadow-[0_0_30px_rgba(6,182,212,0.8)] transition-all">
+            <img
+              src="/elder-logo.jpg"
+              alt="Elder Clan Official Logo"
+              className="w-full h-full object-cover rounded-[10px]"
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-purple-400 group-hover:from-cyan-300 group-hover:to-pink-400 transition-all">
@@ -38,7 +40,7 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* Navigation with sound cues */}
+        {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-1.5 bg-purple-950/20 border border-purple-500/20 p-1 rounded-xl">
           <Link
             href="/"

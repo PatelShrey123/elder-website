@@ -2,32 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+@layer base {
+  body {
+    background-color: #07050c;
+    color: #f3f4f6;
+    overflow-x: hidden;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+/* Custom Anime / Gojo / Kirka glowing styles */
+.neon-glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.25), 0 0 5px rgba(239, 68, 68, 0.15);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+.neon-glow-purple {
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.35), 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.neon-glow-cyan {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.35), 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.gaming-card {
+  background: rgba(15, 11, 25, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gaming-card:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.15), 0 0 15px rgba(6, 182, 212, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Button pulse & laser charge animation */
+@keyframes cursed-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(6, 182, 212, 0.2);
   }
+  50% {
+    box-shadow: 0 0 25px rgba(236, 72, 153, 0.6), 0 0 45px rgba(168, 85, 247, 0.4);
+  }
+}
+
+.cursed-btn-glow {
+  animation: cursed-pulse 3s infinite ease-in-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #07050c;
+}
+::-webkit-scrollbar-thumb {
+  background: #23193d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9333ea;
 }

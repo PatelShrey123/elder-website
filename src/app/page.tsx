@@ -1,113 +1,144 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Swords, ClipboardList, ShieldAlert, Award, Target, Flame, Sparkles } from "lucide-react";
+import GojoCutscene from "@/components/GojoCutscene";
+import { sfx } from "@/lib/sound";
 
 export default function Home() {
+  const router = useRouter();
+  const [isLaserTriggered, setIsLaserTriggered] = useState(false);
+
+  const handleApplyClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isLaserTriggered) return;
+    setIsLaserTriggered(true);
+  };
+
+  const handleCutsceneComplete = () => {
+    router.push("/requirements");
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="relative flex-grow flex items-center justify-center py-16 px-4 overflow-hidden">
+      
+      {/* Gojo Laser Beam / Hollow Purple Cutscene Overlay */}
+      <GojoCutscene
+        isActive={isLaserTriggered}
+        onComplete={handleCutsceneComplete}
+        targetName="APPLY NOW"
+      />
+
+      <div className="max-w-4xl w-full text-center relative z-10 space-y-10">
+        
+        {/* Animated Cyber/Anime Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex items-center space-x-1.5 text-xs font-black uppercase tracking-wider text-cyan-300 bg-cyan-950/40 border border-cyan-500/30 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.25)] animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Recruiting Active Voxel Champions</span>
+          </div>
+          <div className="flex items-center space-x-1.5 text-xs font-black uppercase tracking-wider text-purple-300 bg-purple-950/40 border border-purple-500/30 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.25)]">
+            <Flame className="w-3.5 h-3.5 text-pink-400" />
+            <span>Clan War Slots: 15 Max</span>
+          </div>
         </div>
+
+        {/* Hero Title */}
+        <div className="space-y-5">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white uppercase leading-[1.08] drop-shadow-[0_0_35px_rgba(147,51,234,0.3)]">
+            Thanks for your interest in joining <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-500 drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
+              Elder Clan
+            </span>
+          </h1>
+          <p className="max-w-2xl mx-auto text-gray-300 text-sm sm:text-base md:text-lg font-medium leading-relaxed">
+            Elder is recruiting active, loyal, social players for the next Clan War. 
+            Slots are limited — only 15 will be accepted.
+          </p>
+        </div>
+
+        {/* Action Buttons with Laser Interaction */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-5 pt-2">
+          
+          {/* Main Apply Button with Laser Trigger */}
+          <button
+            onClick={handleApplyClick}
+            onMouseEnter={() => sfx.playHover()}
+            className="relative group w-full sm:w-auto overflow-hidden rounded-2xl p-[2px] transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(168,85,247,0.5)]"
+          >
+            {/* Spinning Gradient Border */}
+            <span className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-pink-500 to-purple-600 rounded-2xl animate-spin" style={{ animationDuration: '4s' }} />
+            
+            <div className="relative flex items-center justify-center space-x-3 bg-gradient-to-r from-[#170c2e] to-[#0d071b] px-8 py-4 rounded-[14px] text-white font-black text-sm uppercase tracking-widest group-hover:bg-opacity-80 transition-all">
+              <Swords className="w-5 h-5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+              <span className="tracking-wider">Apply Now</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/30 text-cyan-300 font-extrabold border border-purple-400/40">
+                GOJO FX
+              </span>
+            </div>
+          </button>
+
+          {/* Results Link */}
+          <Link
+            href="/results"
+            onMouseEnter={() => sfx.playHover()}
+            className="w-full sm:w-auto flex items-center justify-center space-x-2.5 bg-purple-950/30 hover:bg-purple-900/40 text-gray-200 hover:text-white border border-purple-500/30 hover:border-purple-400/60 font-black text-sm uppercase tracking-wider px-8 py-4 rounded-2xl transition-all hover:scale-105"
+          >
+            <ClipboardList className="w-4 h-4 text-purple-400" />
+            <span>Check Results</span>
+          </Link>
+        </div>
+
+        {/* Feature Cards with Glassmorphism */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto pt-6 text-left">
+          
+          <div 
+            onMouseEnter={() => sfx.playHover()}
+            className="gaming-card p-5 rounded-2xl border border-purple-500/20 bg-gradient-to-b from-[#160f26]/80 to-[#0c0717]/80"
+          >
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-purple-500/10 text-cyan-400 border border-purple-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                <Target className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Level Requirement</h3>
+            </div>
+            <p className="text-2xl font-black text-white">Level 35+</p>
+            <p className="text-xs text-gray-400 mt-1">High weekly combat activity required</p>
+          </div>
+
+          <div 
+            onMouseEnter={() => sfx.playHover()}
+            className="gaming-card p-5 rounded-2xl border border-purple-500/20 bg-gradient-to-b from-[#160f26]/80 to-[#0c0717]/80"
+          >
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-purple-500/10 text-pink-400 border border-purple-500/30 shadow-[0_0_15px_rgba(236,72,153,0.2)]">
+                <Award className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Score Threshold</h3>
+            </div>
+            <p className="text-2xl font-black text-white">50,000+ XP</p>
+            <p className="text-xs text-gray-400 mt-1">100k+ per week for alt accounts</p>
+          </div>
+
+          <div 
+            onMouseEnter={() => sfx.playHover()}
+            className="gaming-card p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-[#160f26]/80 to-[#0c0717]/80"
+          >
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                <Swords className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">The Twist</h3>
+            </div>
+            <p className="text-2xl font-black text-white">Defeat a Trainer</p>
+            <p className="text-xs text-gray-400 mt-1">Must win against an official trainer</p>
+          </div>
+
+        </div>
+
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }

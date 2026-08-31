@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/sound";
-import { Swords, Zap, Flame, Sparkles } from "lucide-react";
+import { Swords, Zap } from "lucide-react";
 
 interface GojoCutsceneProps {
   isActive: boolean;
@@ -30,29 +30,29 @@ export default function GojoCutscene({ isActive, onComplete, targetName = "APPLY
       const levitateTimer = setTimeout(() => {
         setPhase("levitate");
         sfx.playEnergyFusion();
-      }, 1200);
+      }, 1300);
 
       // Stage 3: Hollow Purple Charge
       const purpleTimer = setTimeout(() => {
         setPhase("purple");
-      }, 2300);
+      }, 2500);
 
       // Stage 4: Catastrophic Laser Blast
       const blastTimer = setTimeout(() => {
         setPhase("annihilation");
         sfx.playHollowPurpleBeam();
-      }, 3200);
+      }, 3400);
 
       // Stage 5: Flash
       const flashTimer = setTimeout(() => {
         setPhase("flash");
-      }, 4100);
+      }, 4300);
 
       // Finish and redirect
       const finishTimer = setTimeout(() => {
         setPhase("idle");
         onComplete();
-      }, 4500);
+      }, 4700);
 
       return () => {
         clearTimeout(levitateTimer);
@@ -143,7 +143,7 @@ export default function GojoCutscene({ isActive, onComplete, targetName = "APPLY
                 </motion.div>
               </div>
 
-              {/* Right Side: Gojo (Infinite Void) */}
+              {/* Right Side: Gojo Satoru with requested Tenor GIF */}
               <div className="relative flex flex-col items-center justify-center p-8 bg-gradient-to-l from-cyan-950/90 via-[#05111d] to-transparent overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.3)_0,transparent_70%)] animate-pulse" />
                 
@@ -155,9 +155,12 @@ export default function GojoCutscene({ isActive, onComplete, targetName = "APPLY
                 >
                   <div className="relative w-48 h-48 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-cyan-400/70 shadow-[0_0_50px_#06b6d4] bg-[#020b14] flex items-center justify-center">
                     <img
-                      src="/anime/gojo_void.png"
+                      src="/anime/gojo_tenor.gif"
                       alt="Satoru Gojo Infinite Void"
                       className="w-full h-full object-cover scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/anime/gojo_void.png';
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex items-end justify-center p-3">
                       <span className="text-xs font-black uppercase tracking-widest text-cyan-300 bg-black/85 px-2.5 py-1 rounded border border-cyan-400/50">
@@ -205,7 +208,7 @@ export default function GojoCutscene({ isActive, onComplete, targetName = "APPLY
           >
             <div className="relative w-full max-w-3xl h-[60vh] rounded-3xl overflow-hidden border-2 border-purple-500/50 shadow-[0_0_80px_rgba(168,85,247,0.4)] bg-black flex items-center justify-center">
               <img
-                src="/anime/gojo_void.png"
+                src="/anime/gojo_tenor.gif"
                 alt="Gojo flying in the sky"
                 className="w-full h-full object-cover opacity-90 scale-105"
               />
@@ -246,7 +249,7 @@ export default function GojoCutscene({ isActive, onComplete, targetName = "APPLY
                 alt="Gojo Hollow Purple Charge"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/anime/gojo_void.png';
+                  (e.target as HTMLImageElement).src = '/anime/gojo_tenor.gif';
                 }}
               />
               

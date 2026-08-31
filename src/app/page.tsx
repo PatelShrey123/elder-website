@@ -43,7 +43,7 @@ export default function Home() {
           </h1>
           <p className="max-w-2xl mx-auto text-gray-300 text-sm sm:text-base md:text-lg font-medium leading-relaxed">
             Elder is recruiting active, loyal, social players for the next Clan War. 
-            Slots are limited — only 15 will be accepted.
+            Slots are limited — only 20 will be accepted.
           </p>
         </div>
 

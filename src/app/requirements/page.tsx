@@ -129,7 +129,7 @@ export default function Requirements() {
             </div>
           </div>
           <p className="text-xs text-pink-400/90 font-bold">
-            Limited slots: only 15 spots per Clan War. Apply fast.
+            Limited slots: only 20 spots per Clan War. Apply fast.
           </p>
         </div>
 

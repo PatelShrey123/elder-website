@@ -27,31 +27,29 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, account, user }) {
       try {
+        // On initial sign in: store account info & verify Discord guild roles
         if (account) {
           token.accessToken = account.access_token;
           token.userId = account.providerAccountId;
+
+          if (token.accessToken && token.userId) {
+            try {
+              const verifyInfo = await checkGuildMembershipAndRoles(
+                token.accessToken as string,
+                token.userId as string
+              );
+              token.inGuild = verifyInfo.inGuild;
+              token.isApplicant = verifyInfo.isApplicant;
+              token.isOfficer = verifyInfo.isOfficer;
+            } catch (e) {
+              console.error("Error in NextAuth initial JWT guild verification:", e);
+            }
+          }
         }
 
         if (user) {
           token.name = user.name;
           token.picture = user.image;
-        }
-        
-        if (token.accessToken && token.userId) {
-          try {
-            const verifyInfo = await checkGuildMembershipAndRoles(
-              token.accessToken as string,
-              token.userId as string
-            );
-            token.inGuild = verifyInfo.inGuild;
-            token.isApplicant = verifyInfo.isApplicant;
-            token.isOfficer = verifyInfo.isOfficer;
-          } catch (e) {
-            console.error("Error in NextAuth JWT guild verification:", e);
-            token.inGuild = false;
-            token.isApplicant = false;
-            token.isOfficer = false;
-          }
         }
       } catch (err) {
         console.error("JWT callback general error:", err);
@@ -78,5 +76,5 @@ export const authOptions: NextAuthOptions = {
     error: "/",
   },
   secret: nextAuthSecret,
-  debug: true,
+  debug: false,
 };

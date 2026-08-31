@@ -11,7 +11,7 @@ if (!process.env.NEXTAUTH_SECRET || process.env.NEXTAUTH_SECRET.trim() === '') {
   process.env.NEXTAUTH_SECRET = 'elder_clan_production_secret_key_849204810283';
 }
 
-// 2. Auto-map Vercel Postgres variables to DATABASE_URL
+// 2. Auto-map Vercel Postgres variables
 const dbUrl =
   process.env.STORAGE_POSTGRES_PRISMA_URL ||
   process.env.STORAGE_PRISMA_URL ||
@@ -23,11 +23,15 @@ const dbUrl =
   process.env.DATABASE_URL;
 
 if (dbUrl && dbUrl.trim() !== '') {
-  process.env.DATABASE_URL = dbUrl.trim();
+  const cleanUrl = dbUrl.trim();
+  process.env.STORAGE_POSTGRES_PRISMA_URL = cleanUrl;
+  process.env.DATABASE_URL = cleanUrl;
   console.log('✓ Successfully mapped database connection URL for Prisma');
 } else {
   // Safe dummy postgres url for build-time compilation if no DB connected yet
-  process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/postgres';
+  const dummy = 'postgresql://postgres:postgres@localhost:5432/postgres';
+  process.env.STORAGE_POSTGRES_PRISMA_URL = dummy;
+  process.env.DATABASE_URL = dummy;
   console.log('✓ Using PostgreSQL compile fallback for static prerender');
 }
 

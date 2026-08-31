@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Swords, CheckCircle2, ShieldX, ArrowRight, Target } from "lucide-react";
+import { Swords, CheckCircle2, ShieldX, ArrowRight, Target, RefreshCw, Loader2 } from "lucide-react";
 import GojoCutscene from "@/components/GojoCutscene";
 import { sfx } from "@/lib/sound";
 
@@ -12,7 +11,11 @@ export default function Requirements() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLaserTriggered, setIsLaserTriggered] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localApplicantRole, setLocalApplicantRole] = useState<boolean | null>(null);
+
   const user = session?.user as any;
+  const isApplicantVerified = localApplicantRole !== null ? localApplicantRole : Boolean(user?.isApplicant);
 
   const trainers = [
     { name: "[EGD]Fabin #KB4ACS", region: "GLOBAL" },
@@ -43,6 +46,26 @@ export default function Requirements() {
 
   const handleCutsceneComplete = () => {
     router.push("/apply");
+  };
+
+  const handleRefreshEligibility = async () => {
+    setIsRefreshing(true);
+    sfx.playHover();
+    try {
+      const res = await fetch("/api/auth/refresh", { cache: "no-store" });
+      const data = await res.json();
+      if (data.isApplicant || data.isOfficer) {
+        setLocalApplicantRole(true);
+        sfx.playEnergyFusion();
+      } else {
+        // Fallback re-login to update token
+        signIn("discord", { callbackUrl: "/requirements" });
+      }
+    } catch (e) {
+      signIn("discord", { callbackUrl: "/requirements" });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -142,7 +165,7 @@ export default function Requirements() {
           ) : !session ? (
             <div className="w-full text-center space-y-4">
               <button
-                onClick={() => signIn("discord", { callbackUrl: "/apply" })}
+                onClick={() => signIn("discord", { callbackUrl: "/requirements" })}
                 onMouseEnter={() => sfx.playHover()}
                 className="w-full sm:w-auto inline-flex items-center justify-center space-x-3 bg-[#5865F2] hover:bg-[#4752C4] text-white font-black uppercase tracking-wider px-8 py-4 rounded-2xl shadow-lg shadow-indigo-500/25 transition-all hover:scale-105"
               >
@@ -155,7 +178,7 @@ export default function Requirements() {
             </div>
           ) : (
             <div className="w-full text-center space-y-4">
-              {user.isApplicant ? (
+              {isApplicantVerified ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-center space-x-2 text-cyan-300 font-bold text-xs bg-cyan-950/40 border border-cyan-500/30 px-4 py-2 rounded-xl max-w-sm mx-auto shadow-[0_0_15px_rgba(6,182,212,0.2)]">
                     <CheckCircle2 className="w-4 h-4 text-cyan-400" />
@@ -180,24 +203,35 @@ export default function Requirements() {
                       <h3 className="font-bold text-white uppercase text-sm">Applicant Role Required</h3>
                       <p className="text-xs text-gray-300 mt-1 leading-relaxed">
                         Your Discord account is missing the required **Applicant** role (`1501943775021371543`) in the Elder server. 
-                        Please get the role in the Discord server, then refresh.
+                        Please get the role in the Discord server, then click Refresh Eligibility.
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <a
-                      href="https://discord.gg/elder" 
+                      href="https://discord.gg/8XJVT9vEg" 
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-center bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-2 rounded-xl text-xs"
+                      className="flex-1 text-center bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors"
                     >
-                      Join Elder Discord
+                      <span>Join Elder Discord</span>
                     </a>
                     <button
-                      onClick={() => window.location.reload()}
-                      className="flex-grow bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-md"
+                      onClick={handleRefreshEligibility}
+                      disabled={isRefreshing}
+                      className="flex-grow bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md flex items-center justify-center space-x-1.5 transition-all hover:scale-105 disabled:opacity-50"
                     >
-                      Refresh Eligibility
+                      {isRefreshing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Checking Discord...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Refresh Eligibility</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

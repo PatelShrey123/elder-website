@@ -13,12 +13,14 @@ if (!process.env.NEXTAUTH_SECRET || process.env.NEXTAUTH_SECRET.trim() === '') {
 
 // 2. Auto-map Vercel Postgres variables to DATABASE_URL
 const dbUrl =
-  process.env.DATABASE_URL ||
-  process.env.STORAGE_URL ||
+  process.env.STORAGE_POSTGRES_PRISMA_URL ||
   process.env.STORAGE_PRISMA_URL ||
+  process.env.STORAGE_POSTGRES_URL ||
+  process.env.STORAGE_URL ||
   process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL ||
-  process.env.POSTGRES_URL_NON_POOLING;
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DATABASE_URL;
 
 if (dbUrl && dbUrl.trim() !== '') {
   process.env.DATABASE_URL = dbUrl.trim();

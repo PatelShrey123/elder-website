@@ -2,7 +2,9 @@ import { PrismaClient } from "@prisma/client";
 
 function getPostgresUrl(): string | undefined {
   const candidates = [
+    process.env.STORAGE_POSTGRES_PRISMA_URL,
     process.env.STORAGE_PRISMA_URL,
+    process.env.STORAGE_POSTGRES_URL,
     process.env.STORAGE_URL,
     process.env.POSTGRES_PRISMA_URL,
     process.env.POSTGRES_URL,

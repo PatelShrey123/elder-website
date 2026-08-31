@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Swords, Upload, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Zap, Sparkles } from "lucide-react";
+import { Swords, Upload, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Zap } from "lucide-react";
 import Link from "next/link";
 import { sfx } from "@/lib/sound";
 
@@ -189,10 +189,6 @@ export default function Apply() {
 
         {/* Heading */}
         <div className="space-y-2">
-          <div className="inline-flex items-center space-x-1.5 bg-purple-950/40 border border-purple-500/30 px-3 py-1 rounded-full text-[11px] font-black uppercase text-pink-300 shadow-[0_0_15px_rgba(236,72,153,0.3)]">
-            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span>ELDER CLAN APPLICANT INTAKE</span>
-          </div>
           <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white flex items-center space-x-2.5">
             <Swords className="w-7 h-7 text-cyan-400" />
             <span>Submit Application</span>
@@ -349,7 +345,7 @@ export default function Apply() {
             </div>
           </div>
 
-          {/* Submit Button with Laser / Hollow Purple Sound Effect */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Sparkles } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { sfx } from "@/lib/sound";
+import CRTWarp from "./CRTWarp";
 
 export default function CursedEnergyBackground() {
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -26,33 +27,35 @@ export default function CursedEnergyBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
       
-      {/* Animated Subtle Domain Grid Lines */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f153815_1px,transparent_1px),linear-gradient(to_bottom,#1f153815_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-
-      {/* Cursed Energy Aura Gradient Spheres */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: "8s" }} />
-      <div className="absolute top-1/3 -right-40 w-96 h-96 bg-cyan-500/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: "6s" }} />
-      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] bg-red-600/5 rounded-full blur-[160px]" />
-
-      {/* Floating Cursed Energy Embers */}
-      <div className="absolute inset-0">
-        {[...Array(12)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-gradient-to-t from-purple-400 to-cyan-300 opacity-30 blur-[1px] animate-bounce"
-            style={{
-              width: `${Math.random() * 4 + 2}px`,
-              height: `${Math.random() * 4 + 2}px`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDuration: `${Math.random() * 6 + 4}s`,
-              animationDelay: `${Math.random() * 3}s`,
-            }}
-          />
-        ))}
+      {/* React Bits CRTWarp WebGL Shader Background */}
+      <div className="absolute inset-0 opacity-45 pointer-events-auto">
+        <CRTWarp
+          color="#9333ea"
+          backgroundColor="#07050c"
+          speed={0.4}
+          curvature={0.18}
+          scanlineStrength={0.16}
+          scanlineFrequency={160}
+          waveAmplitude={0.25}
+          waveFrequency={2.2}
+          bloom={1.4}
+          bloomRadius={1.2}
+          noise={0.08}
+          vignette={0.2}
+          brightness={1.15}
+          pixelation={1}
+          rgbShift={0.012}
+          mouseReact={true}
+          mouseStrength={0.4}
+          dpr={1}
+          fps={30}
+        />
       </div>
 
-      {/* Sound FX Toggle Button in Bottom Right */}
+      {/* Deep Dark Vignette Gradient Overlays */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,#07050c_90%)] pointer-events-none" />
+
+      {/* Floating Audio Toggle Button */}
       <div className="fixed bottom-4 right-4 z-40 pointer-events-auto">
         <button
           onClick={toggleSound}

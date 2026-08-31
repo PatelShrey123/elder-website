@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Swords, CheckCircle2, ShieldX, ArrowRight, Zap, Target } from "lucide-react";
+import { Swords, CheckCircle2, ShieldX, ArrowRight, Target } from "lucide-react";
 import GojoCutscene from "@/components/GojoCutscene";
 import { sfx } from "@/lib/sound";
 
@@ -59,10 +59,6 @@ export default function Requirements() {
         
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center space-x-2 bg-purple-950/40 border border-purple-500/30 px-3.5 py-1 rounded-full text-xs font-black uppercase text-cyan-300 shadow-[0_0_15px_rgba(168,85,247,0.3)] mb-2">
-            <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>ELDER RECRUITMENT PROTOCOL</span>
-          </div>
           <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white drop-shadow-[0_0_20px_rgba(168,85,247,0.4)]">
             Clan Requirements
           </h1>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import db from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sendDiscordDM } from "@/lib/discord";
@@ -27,9 +27,7 @@ export async function POST(
       return NextResponse.json({ error: "A decision reason is required." }, { status: 400 });
     }
 
-    const application = await prisma.application.findUnique({
-      where: { id },
-    });
+    const application = await db.getApplicationById(id);
 
     if (!application) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 });
@@ -39,18 +37,10 @@ export async function POST(
       return NextResponse.json({ error: "This application has already been decided." }, { status: 400 });
     }
 
-    const officer = session.user as any;
     const status = action === "ACCEPT" ? "ACCEPTED" : "REJECTED";
 
     // Update DB
-    const updatedApplication = await prisma.application.update({
-      where: { id },
-      data: {
-        status,
-        decisionReason: reason,
-        decidedAt: new Date(),
-      },
-    });
+    const updatedApplication = await db.updateApplicationStatus(id, status, reason);
 
     // Send Webhook (Webhook #2 - decisions channel)
     const decisionWebhookUrl = process.env.DISCORD_DECISION_WEBHOOK_URL;
@@ -88,7 +78,7 @@ export async function POST(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: "Elder Official Bot",
-            avatar_url: "https://elderapplication.lovable.app/favicon.ico",
+            avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
             content,
             embeds: [embed],
           }),
@@ -102,7 +92,7 @@ export async function POST(
       }
     }
 
-    // Send Discord DM using Bot Token (Optional, wrap in try/catch)
+    // Send Discord DM using Bot Token
     if (process.env.DISCORD_BOT_TOKEN) {
       const isAccepted = status === "ACCEPTED";
       const dmMessage = isAccepted
@@ -115,43 +105,6 @@ export async function POST(
     return NextResponse.json({ success: true, application: updatedApplication });
   } catch (error) {
     console.error("Error updating application status:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
-
-// DELETE manual cleanup API route (removes DB row + screenshot)
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !(session.user as any).isOfficer) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = params;
-    const application = await prisma.application.findUnique({
-      where: { id },
-    });
-
-    if (!application) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
-    }
-
-    // Delete screenshot from storage
-    if (application.screenshotPath) {
-      await deletePrivateFile(application.screenshotPath);
-    }
-
-    // Delete from DB
-    await prisma.application.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true, message: "Application deleted successfully." });
-  } catch (error) {
-    console.error("Error deleting application:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

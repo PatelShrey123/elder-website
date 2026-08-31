@@ -1,9 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
+import crypto from "crypto";
 
-function findDatabaseUrl(): string {
-  // 1. Check direct common names
-  const directCandidates = [
-    process.env.DATABASE_URL,
+function findDatabaseUrl(): string | undefined {
+  const candidates = [
     process.env.STORAGE_POSTGRES_PRISMA_URL,
     process.env.STORAGE_PRISMA_URL,
     process.env.STORAGE_POSTGRES_URL,
@@ -11,47 +10,239 @@ function findDatabaseUrl(): string {
     process.env.POSTGRES_PRISMA_URL,
     process.env.POSTGRES_URL,
     process.env.POSTGRES_URL_NON_POOLING,
+    process.env.DATABASE_URL,
   ];
 
-  for (const val of directCandidates) {
+  for (const val of candidates) {
     if (val && (val.startsWith("postgresql://") || val.startsWith("postgres://"))) {
       return val.trim();
     }
   }
 
-  // 2. Scan all environment variables dynamically
   for (const [k, v] of Object.entries(process.env)) {
     if (typeof v === "string" && (v.startsWith("postgresql://") || v.startsWith("postgres://"))) {
       return v.trim();
     }
   }
 
-  return "postgresql://postgres:postgres@localhost:5432/postgres";
+  return undefined;
 }
 
 const activeUrl = findDatabaseUrl();
-process.env.DATABASE_URL = activeUrl;
-
-const prismaClientSingleton = () => {
-  try {
-    return new PrismaClient({
-      datasources: {
-        db: {
-          url: activeUrl,
-        },
-      },
-    });
-  } catch {
-    return new PrismaClient();
-  }
-};
 
 declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
+  var pgPoolGlobal: Pool | undefined;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+let pool: Pool | null = null;
 
-export default prisma;
+if (activeUrl) {
+  if (!globalThis.pgPoolGlobal) {
+    globalThis.pgPoolGlobal = new Pool({
+      connectionString: activeUrl,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+    });
+  }
+  pool = globalThis.pgPoolGlobal;
+}
 
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+// In-memory fallback if no DB connection
+declare global {
+  var inMemoryAppsGlobal: any[] | undefined;
+}
+if (!globalThis.inMemoryAppsGlobal) {
+  globalThis.inMemoryAppsGlobal = [];
+}
+
+/**
+ * Initialize PostgreSQL table automatically
+ */
+let tableInitialized = false;
+async function ensureTable() {
+  if (!pool || tableInitialized) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "Application" (
+        "id" TEXT PRIMARY KEY,
+        "discordId" TEXT NOT NULL,
+        "discordUsername" TEXT NOT NULL,
+        "discordGlobalName" TEXT,
+        "discordAvatar" TEXT,
+        "kirkaId" TEXT NOT NULL,
+        "weeklyXp" INTEGER NOT NULL,
+        "previousClan" TEXT,
+        "whyLeft" TEXT,
+        "whyJoin" TEXT NOT NULL,
+        "screenshotPath" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PENDING',
+        "decisionReason" TEXT,
+        "decidedAt" TIMESTAMP WITH TIME ZONE,
+        "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+    `);
+    tableInitialized = true;
+  } catch (err) {
+    console.warn("Table initialization note:", err);
+  }
+}
+
+export interface CreateAppParams {
+  discordId: string;
+  discordUsername: string;
+  discordGlobalName?: string | null;
+  discordAvatar?: string | null;
+  kirkaId: string;
+  weeklyXp: number;
+  previousClan?: string | null;
+  whyLeft?: string | null;
+  whyJoin: string;
+  screenshotPath: string;
+  status?: string;
+}
+
+export const db = {
+  async createApplication(data: CreateAppParams) {
+    const id = `app_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const now = new Date();
+
+    if (pool) {
+      try {
+        await ensureTable();
+        const query = `
+          INSERT INTO "Application" (
+            "id", "discordId", "discordUsername", "discordGlobalName", "discordAvatar",
+            "kirkaId", "weeklyXp", "previousClan", "whyLeft", "whyJoin",
+            "screenshotPath", "status", "createdAt", "updatedAt"
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          RETURNING *;
+        `;
+        const values = [
+          id,
+          data.discordId,
+          data.discordUsername,
+          data.discordGlobalName || null,
+          data.discordAvatar || null,
+          data.kirkaId,
+          data.weeklyXp,
+          data.previousClan || null,
+          data.whyLeft || null,
+          data.whyJoin,
+          data.screenshotPath,
+          data.status || "PENDING",
+          now,
+          now,
+        ];
+        const res = await pool.query(query, values);
+        if (res.rows && res.rows[0]) {
+          return res.rows[0];
+        }
+      } catch (err) {
+        console.error("Postgres INSERT error, saving to memory fallback:", err);
+      }
+    }
+
+    const memoryApp = {
+      id,
+      ...data,
+      status: data.status || "PENDING",
+      createdAt: now,
+      updatedAt: now,
+    };
+    globalThis.inMemoryAppsGlobal?.unshift(memoryApp);
+    return memoryApp;
+  },
+
+  async getApplications(statusFilter?: string | null) {
+    if (pool) {
+      try {
+        await ensureTable();
+        let query = `SELECT * FROM "Application" ORDER BY "createdAt" DESC;`;
+        let values: any[] = [];
+        if (statusFilter) {
+          query = `SELECT * FROM "Application" WHERE "status" = $1 ORDER BY "createdAt" DESC;`;
+          values = [statusFilter];
+        }
+        const res = await pool.query(query, values);
+        return res.rows || [];
+      } catch (err) {
+        console.error("Postgres SELECT error, returning memory fallback:", err);
+      }
+    }
+
+    let apps = globalThis.inMemoryAppsGlobal || [];
+    if (statusFilter) {
+      apps = apps.filter((a) => a.status === statusFilter);
+    }
+    return apps;
+  },
+
+  async getApplicationById(id: string) {
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(`SELECT * FROM "Application" WHERE "id" = $1 LIMIT 1;`, [id]);
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.error("Postgres SELECT by ID error:", err);
+      }
+    }
+
+    return globalThis.inMemoryAppsGlobal?.find((a) => a.id === id) || null;
+  },
+
+  async updateApplicationStatus(id: string, status: string, decisionReason?: string | null) {
+    const now = new Date();
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(
+          `UPDATE "Application" SET "status" = $1, "decisionReason" = $2, "decidedAt" = $3, "updatedAt" = $4 WHERE "id" = $5 RETURNING *;`,
+          [status, decisionReason || null, now, now, id]
+        );
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.error("Postgres UPDATE error:", err);
+      }
+    }
+
+    const app = globalThis.inMemoryAppsGlobal?.find((a) => a.id === id);
+    if (app) {
+      app.status = status;
+      app.decisionReason = decisionReason || null;
+      app.decidedAt = now;
+      app.updatedAt = now;
+      return app;
+    }
+    return null;
+  },
+
+  async countMonthlyApplications(discordId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    if (pool) {
+      try {
+        await ensureTable();
+        const res = await pool.query(
+          `SELECT COUNT(*) FROM "Application" WHERE "discordId" = $1 AND "createdAt" >= $2;`,
+          [discordId, startOfMonth]
+        );
+        if (res.rows && res.rows[0]) {
+          return parseInt(res.rows[0].count, 10) || 0;
+        }
+      } catch (err) {
+        console.error("Postgres COUNT error:", err);
+      }
+    }
+
+    return (
+      globalThis.inMemoryAppsGlobal?.filter(
+        (a) => a.discordId === discordId && new Date(a.createdAt) >= startOfMonth
+      ).length || 0
+    );
+  },
+};
+
+export default db;

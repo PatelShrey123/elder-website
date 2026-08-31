@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import db from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { savePrivateFile } from "@/lib/storage";
@@ -12,6 +12,26 @@ export async function POST(request: Request) {
     }
 
     const user = session.user as any;
+
+    // Monthly rate limit check
+    try {
+      const monthlyCount = await db.countMonthlyApplications(user.id || "guest");
+      if (monthlyCount >= 2) {
+        const now = new Date();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const tryAgainDate = nextMonth.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        return NextResponse.json({
+          error: `Monthly Limit Reached. You can submit at most 2 applications per calendar month. You can apply again on ${tryAgainDate}.`,
+        }, { status: 429 });
+      }
+    } catch (countErr) {
+      console.warn("Count check note:", countErr);
+    }
 
     // Read Multipart FormData
     const formData = await request.formData();
@@ -77,34 +97,19 @@ export async function POST(request: Request) {
     }
 
     // 2. Save Application to DB
-    let newApplication;
-    try {
-      newApplication = await prisma.application.create({
-        data: {
-          discordId: user.id || "guest",
-          discordUsername: user.name || "Unknown",
-          discordGlobalName: user.name || null,
-          discordAvatar: user.image || null,
-          kirkaId,
-          weeklyXp,
-          previousClan: previousClan || null,
-          whyLeft: whyLeft || null,
-          whyJoin,
-          screenshotPath: savedPath,
-          status: "PENDING",
-        },
-      });
-    } catch (createErr: any) {
-      console.warn("DB save note:", createErr?.message);
-      newApplication = {
-        id: `app_${Date.now()}`,
-        discordId: user.id || "guest",
-        discordUsername: user.name || "Unknown",
-        kirkaId,
-        weeklyXp,
-        status: "PENDING",
-      };
-    }
+    const newApplication = await db.createApplication({
+      discordId: user.id || "guest",
+      discordUsername: user.name || "Unknown",
+      discordGlobalName: user.name || null,
+      discordAvatar: user.image || null,
+      kirkaId,
+      weeklyXp,
+      previousClan: previousClan || null,
+      whyLeft: whyLeft || null,
+      whyJoin,
+      screenshotPath: savedPath,
+      status: "PENDING",
+    });
 
     return NextResponse.json({ success: true, application: newApplication });
   } catch (error: any) {

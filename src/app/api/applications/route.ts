@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import db from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { generateSignedUrl } from "@/lib/storage";
@@ -14,12 +14,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const whereClause = status ? { status } : {};
-
-    const applications = await prisma.application.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-    });
+    const applications = await db.getApplications(status);
 
     // Generate signed URLs for screenshots
     const appsWithSignedUrls = applications.map((app: any) => {

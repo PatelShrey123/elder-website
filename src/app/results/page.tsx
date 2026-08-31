@@ -14,10 +14,10 @@ export default function Results() {
     setError("");
     sfx.playHover();
     try {
-      const res = await fetch("/api/results");
+      const res = await fetch("/api/results", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load results.");
       const data = await res.json();
-      setResults(data.results || []);
+      setResults(data.results || data.applications || []);
     } catch (err: any) {
       setError(err.message);
     } finally {

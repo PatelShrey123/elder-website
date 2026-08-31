@@ -20,7 +20,11 @@ export async function GET() {
         decidedAt: app.decidedAt,
       }));
 
-    return NextResponse.json({ success: true, applications: decided });
+    return NextResponse.json({
+      success: true,
+      results: decided,
+      applications: decided,
+    });
   } catch (error) {
     console.error("Error fetching results:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -28,4 +32,4 @@ export async function GET() {
 }
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // Cache for 60 seconds
+export const revalidate = 0;

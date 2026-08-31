@@ -1,14 +1,41 @@
 import { PrismaClient } from "@prisma/client";
 
-// Ensure DATABASE_URL is mapped from Vercel Postgres variables if needed
-if (!process.env.DATABASE_URL) {
-  const vercelUrl = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.STORAGE_URL;
-  if (vercelUrl) {
-    process.env.DATABASE_URL = vercelUrl;
+function getPostgresUrl(): string | undefined {
+  const candidates = [
+    process.env.STORAGE_PRISMA_URL,
+    process.env.STORAGE_URL,
+    process.env.POSTGRES_PRISMA_URL,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
+    process.env.DATABASE_URL,
+  ];
+
+  // Pick the first valid postgres url
+  for (const url of candidates) {
+    if (url && (url.startsWith("postgresql://") || url.startsWith("postgres://"))) {
+      return url.trim();
+    }
   }
+
+  return undefined;
+}
+
+const activeDbUrl = getPostgresUrl();
+
+if (activeDbUrl) {
+  process.env.DATABASE_URL = activeDbUrl;
 }
 
 const prismaClientSingleton = () => {
+  if (activeDbUrl) {
+    return new PrismaClient({
+      datasources: {
+        db: {
+          url: activeDbUrl,
+        },
+      },
+    });
+  }
   return new PrismaClient();
 };
 

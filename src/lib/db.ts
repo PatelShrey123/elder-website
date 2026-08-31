@@ -1,7 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 
-function getPostgresUrl(): string | undefined {
-  const candidates = [
+function findDatabaseUrl(): string {
+  // 1. Check direct common names
+  const directCandidates = [
+    process.env.DATABASE_URL,
     process.env.STORAGE_POSTGRES_PRISMA_URL,
     process.env.STORAGE_PRISMA_URL,
     process.env.STORAGE_POSTGRES_URL,
@@ -9,36 +11,39 @@ function getPostgresUrl(): string | undefined {
     process.env.POSTGRES_PRISMA_URL,
     process.env.POSTGRES_URL,
     process.env.POSTGRES_URL_NON_POOLING,
-    process.env.DATABASE_URL,
   ];
 
-  // Pick the first valid postgres url
-  for (const url of candidates) {
-    if (url && (url.startsWith("postgresql://") || url.startsWith("postgres://"))) {
-      return url.trim();
+  for (const val of directCandidates) {
+    if (val && (val.startsWith("postgresql://") || val.startsWith("postgres://"))) {
+      return val.trim();
     }
   }
 
-  return undefined;
+  // 2. Scan all environment variables dynamically
+  for (const [k, v] of Object.entries(process.env)) {
+    if (typeof v === "string" && (v.startsWith("postgresql://") || v.startsWith("postgres://"))) {
+      return v.trim();
+    }
+  }
+
+  return "postgresql://postgres:postgres@localhost:5432/postgres";
 }
 
-const activeDbUrl = getPostgresUrl();
-
-if (activeDbUrl) {
-  process.env.DATABASE_URL = activeDbUrl;
-}
+const activeUrl = findDatabaseUrl();
+process.env.DATABASE_URL = activeUrl;
 
 const prismaClientSingleton = () => {
-  if (activeDbUrl) {
+  try {
     return new PrismaClient({
       datasources: {
         db: {
-          url: activeDbUrl,
+          url: activeUrl,
         },
       },
     });
+  } catch {
+    return new PrismaClient();
   }
-  return new PrismaClient();
 };
 
 declare global {

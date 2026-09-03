@@ -1,6 +1,6 @@
 "use client";
 
-// Web Audio API Sound Synthesizer for Anime / Infinite Void / Hollow Purple SFX
+// Web Audio API Sound Synthesizer for Anime / Gojo & Sukuna SFX
 class SoundFx {
   private ctx: AudioContext | null = null;
   public enabled: boolean = true;
@@ -140,6 +140,137 @@ class SoundFx {
     noiseGain.connect(this.ctx.destination);
 
     noise.start(now + 0.05);
+  }
+
+  // ==========================================
+  // SUKUNA SOUND FX: DOMAIN & SKILL ATTACKS
+  // ==========================================
+
+  // Domain Expansion: Malevolent Shrine (Fukuma Mizushi)
+  playMalevolentShrine() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // Dark subterranean cursed vibration
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = "triangle";
+    subOsc.frequency.setValueAtTime(45, now);
+    subOsc.frequency.exponentialRampToValueAtTime(25, now + 1.4);
+
+    subGain.gain.setValueAtTime(0.4, now);
+    subGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 1.4);
+
+    // Temple Gong / Cursed Bells
+    [110, 165, 220, 330, 440].forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const gong = this.ctx.createOscillator();
+      const gongGain = this.ctx.createGain();
+      gong.type = "sawtooth";
+      gong.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+      gongGain.gain.setValueAtTime(0.12 / (idx + 1), now + idx * 0.05);
+      gongGain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.05 + 1.6);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(800, now);
+
+      gong.connect(filter);
+      filter.connect(gongGain);
+      gongGain.connect(this.ctx.destination);
+
+      gong.start(now + idx * 0.05);
+      gong.stop(now + idx * 0.05 + 1.6);
+    });
+  }
+
+  // Sukuna Cleave & Dismantle Slashes (Kai / Hachi)
+  playCleaveDismantle() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // Multi-slash flurry
+    for (let i = 0; i < 5; i++) {
+      const delay = now + i * 0.12;
+      const slash = this.ctx.createOscillator();
+      const slashGain = this.ctx.createGain();
+
+      slash.type = "sawtooth";
+      slash.frequency.setValueAtTime(2400 - i * 150, delay);
+      slash.frequency.exponentialRampToValueAtTime(200, delay + 0.18);
+
+      slashGain.gain.setValueAtTime(0.25, delay);
+      slashGain.gain.exponentialRampToValueAtTime(0.001, delay + 0.18);
+
+      slash.connect(slashGain);
+      slashGain.connect(this.ctx.destination);
+
+      slash.start(delay);
+      slash.stop(delay + 0.18);
+    }
+  }
+
+  // Sukuna Fire Arrow (Fuga / Kamino) Inferno Blast
+  playFireArrowFuga() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    // Ignition whoosh
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(1600, now + 0.4);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 1.2);
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.2);
+
+    // Explosive flame roar noise
+    const bufferSize = this.ctx.sampleRate * 1.0;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const fireNoise = this.ctx.createBufferSource();
+    fireNoise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2500, now);
+    filter.frequency.exponentialRampToValueAtTime(100, now + 1.0);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.4, now + 0.2);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+    fireNoise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+
+    fireNoise.start(now + 0.15);
   }
 
   playHover() {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Swords, CheckCircle2, ShieldX, ArrowRight, Target, RefreshCw, Loader2 } from "lucide-react";
-import GojoCutscene from "@/components/GojoCutscene";
+import SukunaCutscene from "@/components/SukunaCutscene";
 import { sfx } from "@/lib/sound";
 
 export default function Requirements() {
@@ -71,8 +71,8 @@ export default function Requirements() {
   return (
     <div className="flex-grow py-12 px-4 relative">
       
-      {/* Gojo Laser Cutscene */}
-      <GojoCutscene
+      {/* Sukuna Cursed Energy Cutscene */}
+      <SukunaCutscene
         isActive={isLaserTriggered}
         onComplete={handleCutsceneComplete}
         targetName="APPLICATION FORM"
@@ -185,11 +185,11 @@ export default function Requirements() {
                     <span>Role Verified: Applicant (1501943775021371543)</span>
                   </div>
                   
-                  {/* Go to Form Button with Gojo Laser Effect */}
+                  {/* Go to Form Button with Sukuna Cursed Energy Cutscene */}
                   <button
                     onClick={handleApplyClick}
                     onMouseEnter={() => sfx.playHover()}
-                    className="w-full sm:w-auto inline-flex items-center justify-center space-x-2.5 bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-black uppercase tracking-wider px-8 py-4 rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all hover:scale-105"
+                    className="w-full sm:w-auto inline-flex items-center justify-center space-x-2.5 bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 hover:from-red-500 hover:to-orange-400 text-white font-black uppercase tracking-wider px-8 py-4 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all hover:scale-105"
                   >
                     <span>Proceed to Application Form</span>
                     <ArrowRight className="w-5 h-5" />

@@ -64,10 +64,10 @@ export async function POST(request: Request) {
       ? uploadResult.fileName
       : `data:${file.type || "image/png"};base64,${buffer.toString("base64")}`;
 
-    // 1. POST Webhook to Discord (Webhook #1 - Ping Officers with embedded proof image & quick action link)
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL || PRIMARY_SUBMIT_WEBHOOK;
+    // 1. POST Webhook to Discord (Webhook #1 - Ping Officers with embedded Profile Screenshot & quick action link)
+    const webhookUrl = PRIMARY_SUBMIT_WEBHOOK;
     const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
-    const proofFilename = "trainer_proof.png";
+    const proofFilename = "profile_screenshot.png";
 
     const embedData = {
       title: "⚔️ New Elder Clan Application",
@@ -99,58 +99,41 @@ export async function POST(request: Request) {
         {
           id: 0,
           filename: proofFilename,
-          description: "Trainer Match Proof Screenshot",
+          description: "Profile Screenshot",
         },
       ],
       embeds: [embedData],
     };
 
-    // Attempt 1: Multipart with image attachment and Discord v10 attachments metadata
-    let webhookSent = false;
+    // Send multipart FormData with File object
     try {
       const webhookFormData = new FormData();
       webhookFormData.append("payload_json", JSON.stringify(payloadJson));
-      const uint8 = new Uint8Array(buffer);
-      const imgBlob = new Blob([uint8], { type: file.type || "image/png" });
-      webhookFormData.append("files[0]", imgBlob, proofFilename);
+      const imageFile = new File([buffer], proofFilename, { type: file.type || "image/png" });
+      webhookFormData.append("files[0]", imageFile, proofFilename);
 
       const res = await fetch(webhookUrl, {
         method: "POST",
         body: webhookFormData,
       });
 
-      if (res.ok) {
-        webhookSent = true;
-      } else {
-        console.warn("Multipart webhook returned non-ok status:", res.status, await res.text());
-      }
-    } catch (multipartErr) {
-      console.warn("Multipart dispatch notice:", multipartErr);
-    }
-
-    // Attempt 2: JSON Fallback (guaranteed delivery if multipart fails)
-    if (!webhookSent) {
-      try {
-        const jsonPayload = {
+      if (!res.ok) {
+        console.warn("Multipart submit webhook status:", res.status, await res.text());
+        // Fallback to direct JSON without attachment if multipart had any issue
+        const jsonFallback = {
           content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
           username: "Elder Clan Recruiter",
           avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
-          embeds: [
-            {
-              ...embedData,
-              image: undefined,
-            },
-          ],
+          embeds: [{ ...embedData, image: undefined }],
         };
-
-        await fetch(PRIMARY_SUBMIT_WEBHOOK, {
+        await fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(jsonPayload),
+          body: JSON.stringify(jsonFallback),
         });
-      } catch (jsonErr) {
-        console.error("JSON webhook fallback error:", jsonErr);
       }
+    } catch (webhookErr) {
+      console.warn("Webhook dispatch exception:", webhookErr);
     }
 
     // 2. Save Application to DB

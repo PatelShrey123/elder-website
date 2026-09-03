@@ -304,7 +304,7 @@ export default function Staff() {
                         
                         {/* Screenshot signed viewer */}
                         <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 uppercase font-black tracking-wider">Proof Screenshot</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-black tracking-wider">Profile Screenshot</p>
                           <button
                             onClick={() => {
                               setViewingScreenshotUrl(app.screenshotUrl);
@@ -314,7 +314,7 @@ export default function Staff() {
                             className="w-full flex items-center justify-center space-x-2 bg-purple-950/40 hover:bg-purple-900/50 text-xs font-black uppercase tracking-wider text-white border border-purple-500/30 hover:border-cyan-400/50 py-3 rounded-xl transition-all shadow-md"
                           >
                             <Eye className="w-4 h-4 text-cyan-400" />
-                            <span>Inspect Match Proof</span>
+                            <span>Inspect Profile Screenshot</span>
                           </button>
                         </div>
 

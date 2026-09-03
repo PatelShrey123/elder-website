@@ -301,7 +301,7 @@ export default function Apply() {
           {/* Screenshot Upload Box */}
           <div className="space-y-2">
             <label className="text-xs font-black text-gray-300 uppercase tracking-wider flex items-center">
-              <span>Proof Screenshot (Trainer Match Victory)</span>
+              <span>Profile Screenshot</span>
               <span className="text-pink-500 ml-1">*</span>
             </label>
 
@@ -341,7 +341,7 @@ export default function Apply() {
                 ) : (
                   <div className="space-y-1">
                     <p className="text-xs sm:text-sm font-bold text-gray-200">
-                      Click to upload match screenshot or drag & drop
+                      Click to upload profile screenshot or drag & drop
                     </p>
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
                       Supports JPG, PNG (Max 5MB)

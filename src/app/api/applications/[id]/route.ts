@@ -59,9 +59,9 @@ export async function POST(
         let description = "";
 
         if (isAccepted) {
-          description = `Congratulations **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`)!\n\n` +
+          description = `Congratulations **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`)! 🎉\n\n` +
             `Your application to join **Elder Clan** has been **ACCEPTED FOR TRAINING** for the upcoming Clan War roster! ⚔️🔥\n\n` +
-            `👉 **Next Step**: Please proceed directly to the training channel:\nhttps://discord.com/channels/1369832704102633554/1511962818558296164\n\n` +
+            `👉 **Next Steps**: Please contact an **Officer** or **Mod** to get trained and added to the official training channel!\n\n` +
             `📝 **Officer Notes & Instructions**:\n>>> ${reason}\n\n` +
             `🛡️ **Reviewed by Officer**: <@${officer.id}> (${officer.name || "Officer"})`;
         } else {
@@ -106,7 +106,7 @@ export async function POST(
     if (process.env.DISCORD_BOT_TOKEN) {
       const isAccepted = status === "ACCEPTED";
       const dmMessage = isAccepted
-        ? `Hello! Your application to join **Elder Clan** has been **APPROVED FOR TRAINING**! 🎉\n\nPlease join the training channel here:\nhttps://discord.com/channels/1369832704102633554/1511962818558296164\n\n**Officer Note**: ${reason}`
+        ? `Hello! Your application to join **Elder Clan** has been **APPROVED FOR TRAINING**! 🎉\n\nPlease contact an Officer or Mod in the Elder Discord to get trained and added to the training channel!\n\n**Officer Note**: ${reason}`
         : `Hello. Thank you for applying to **Elder Clan**. Unfortunately your application for this Clan War was not approved. Keep grinding and feel free to apply again for the next war!\n\n**Feedback**: ${reason}`;
       
       await sendDiscordDM(application.discordId, dmMessage);

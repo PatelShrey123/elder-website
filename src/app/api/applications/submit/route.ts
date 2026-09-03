@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { savePrivateFile } from "@/lib/storage";
 
+const DEFAULT_SUBMIT_WEBHOOK = "https://discord.com/api/webhooks/1545038469351473213/6D2N32r-VR2SMFdiUAMEwnX6wUyCP0raDLjDIKeAmQ1SyqMHfUo3bIym341Nk7IoSx2i";
+const OFFICER_ROLE_ID = process.env.DISCORD_OFFICER_ROLE_ID || "1369836381647405067";
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -61,36 +64,54 @@ export async function POST(request: Request) {
       ? uploadResult.fileName
       : `data:${file.type || "image/png"};base64,${buffer.toString("base64")}`;
 
-    // 1. POST Webhook to Discord (Webhook #1 - applications channel)
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    // 1. POST Webhook to Discord (Webhook #1 - Ping Officers with embedded proof image & quick action link)
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL || DEFAULT_SUBMIT_WEBHOOK;
     if (webhookUrl && webhookUrl.startsWith("http")) {
       try {
         const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
-        const embed = {
-          title: "📂 New Clan Application Received!",
-          color: 0x9333ea, // Purple neon
-          timestamp: new Date().toISOString(),
-          fields: [
-            { name: "Discord Applicant", value: `<@${user.id}> (${user.name})`, inline: true },
-            { name: "Kirka.io User ID", value: kirkaId, inline: true },
-            { name: "Weekly XP", value: weeklyXp.toLocaleString(), inline: true },
-            { name: "Previous Clan", value: previousClan || "None", inline: true },
-            { name: "Why they left", value: whyLeft || "N/A" },
-            { name: "Why they want to join Elder", value: whyJoin },
+        const payloadJson = {
+          content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
+          username: "Elder Clan Recruiter",
+          avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+          embeds: [
+            {
+              title: "⚔️ New Elder Clan Application",
+              description: `A new warrior has submitted their application for the upcoming Clan War.\n\n👉 **[Click Here to Open Officer Panel & Review](${dashboardUrl})**`,
+              color: 0x9333ea, // Purple neon
+              fields: [
+                { name: "👤 Discord Applicant", value: `<@${user.id}> (${user.name})`, inline: true },
+                { name: "🎮 Kirka.io User ID", value: `\`${kirkaId}\``, inline: true },
+                { name: "⚡ Weekly Score", value: `**${weeklyXp.toLocaleString()} XP**`, inline: true },
+                { name: "🛡️ Previous Clan", value: previousClan ? `\`${previousClan}\`` : "*None*", inline: true },
+                { name: "❓ Why did they leave?", value: whyLeft || "*N/A*" },
+                { name: "🔥 Why they want to join Elder", value: whyJoin },
+              ],
+              image: {
+                url: "attachment://trainer_match_proof.png",
+              },
+              footer: {
+                text: "Elder Recruitment System • Quick Action: Click link above to Accept/Reject",
+                icon_url: "https://elderapply.vercel.app/elder-logo.jpg",
+              },
+              timestamp: new Date().toISOString(),
+            },
           ],
-          footer: { text: "Elder Official System" },
-          description: `Review this application on the [Officer Panel](${dashboardUrl}).`,
         };
 
-        await fetch(webhookUrl, {
+        // Attach image directly into Discord Webhook via multipart/form-data
+        const webhookBody = new FormData();
+        webhookBody.append("payload_json", JSON.stringify(payloadJson));
+        const imgBlob = new Blob([buffer], { type: file.type || "image/png" });
+        webhookBody.append("files[0]", imgBlob, "trainer_match_proof.png");
+
+        const res = await fetch(webhookUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: "Elder Recruiter",
-            avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
-            embeds: [embed],
-          }),
+          body: webhookBody,
         });
+
+        if (!res.ok) {
+          console.warn("Webhook dispatch non-ok status:", res.status, await res.text());
+        }
       } catch (webhookErr) {
         console.warn("Notice: Discord webhook dispatch note:", webhookErr);
       }

@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { sendDiscordDM } from "@/lib/discord";
 import { deletePrivateFile } from "@/lib/storage";
 
-const DEFAULT_DECISION_WEBHOOK = "https://discord.com/api/webhooks/1513053814863696036/XxsSO8L-tCBfsC5pYiGJzKS5rK-l4_RCxeQ7iBND0i1nUWhghVYCWoKbhgV53y4stHzo";
+const PRIMARY_DECISION_WEBHOOK = "https://discord.com/api/webhooks/1513053814863696036/XxsSO8L-tCBfsC5pYiGJzKS5rK-l4_RCxeQ7iBND0i1nUWhghVYCWoKbhgV53y4stHzo";
 
 export async function POST(
   request: Request,
@@ -46,7 +46,7 @@ export async function POST(
     const updatedApplication = await db.updateApplicationStatus(id, status, reason);
 
     // Send Webhook to Results / Decisions Channel
-    const decisionWebhookUrl = process.env.DISCORD_DECISION_WEBHOOK_URL || DEFAULT_DECISION_WEBHOOK;
+    const decisionWebhookUrl = process.env.DISCORD_DECISION_WEBHOOK_URL || PRIMARY_DECISION_WEBHOOK;
     if (decisionWebhookUrl && decisionWebhookUrl.startsWith("http")) {
       try {
         const isAccepted = status === "ACCEPTED";
@@ -95,10 +95,20 @@ export async function POST(
         });
 
         if (!res.ok) {
-          console.error("Failed to send decision webhook:", await res.text());
+          // Fallback to PRIMARY_DECISION_WEBHOOK directly if env var failed
+          await fetch(PRIMARY_DECISION_WEBHOOK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: "Elder Clan Decisions",
+              avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+              content,
+              embeds: [embed],
+            }),
+          });
         }
       } catch (webhookErr) {
-        console.error("Error posting to decision webhook:", webhookErr);
+        console.error("Error posting to decision webhook, trying direct fallback:", webhookErr);
       }
     }
 

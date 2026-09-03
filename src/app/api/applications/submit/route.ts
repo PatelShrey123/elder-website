@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     // 1. POST Webhook to Discord (Webhook #1 - Ping Officers with embedded proof image & quick action link)
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL || PRIMARY_SUBMIT_WEBHOOK;
     const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
+    const proofFilename = "trainer_proof.png";
 
     const embedData = {
       title: "⚔️ New Elder Clan Application",
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
         { name: "🔥 Why they want to join Elder", value: whyJoin },
       ],
       image: {
-        url: "attachment://trainer_match_proof.png",
+        url: `attachment://${proofFilename}`,
       },
       footer: {
         text: "Elder Recruitment System • Quick Action: Click link above to Accept/Reject",
@@ -94,17 +95,24 @@ export async function POST(request: Request) {
       content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
       username: "Elder Clan Recruiter",
       avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+      attachments: [
+        {
+          id: 0,
+          filename: proofFilename,
+          description: "Trainer Match Proof Screenshot",
+        },
+      ],
       embeds: [embedData],
     };
 
-    // Attempt 1: Multipart with image attachment
+    // Attempt 1: Multipart with image attachment and Discord v10 attachments metadata
     let webhookSent = false;
     try {
       const webhookFormData = new FormData();
       webhookFormData.append("payload_json", JSON.stringify(payloadJson));
       const uint8 = new Uint8Array(buffer);
       const imgBlob = new Blob([uint8], { type: file.type || "image/png" });
-      webhookFormData.append("files[0]", imgBlob, "trainer_match_proof.png");
+      webhookFormData.append("files[0]", imgBlob, proofFilename);
 
       const res = await fetch(webhookUrl, {
         method: "POST",
@@ -130,7 +138,7 @@ export async function POST(request: Request) {
           embeds: [
             {
               ...embedData,
-              image: undefined, // remove attachment ref in pure JSON
+              image: undefined,
             },
           ],
         };

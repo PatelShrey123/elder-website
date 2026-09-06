@@ -18,16 +18,18 @@ export default function Requirements() {
   const isApplicantVerified = localApplicantRole !== null ? localApplicantRole : Boolean(user?.isApplicant);
 
   const trainers = [
-    { name: "[EGD]Fabin #KB4ACS", region: "GLOBAL" },
-    { name: "Carson/CertifiedLoser #V90LM3", region: "ASIA" },
-    { name: "Elena #VRVXZT", region: "ASIA" },
-    { name: "Ghoul #OM2Z2I", region: "ASIA" },
-    { name: "ElderGoonerDih #GNCCHM", region: "ASIA" },
-    { name: "NEKKI #FUYR7K", region: "ASIA" },
-    { name: "Sylkie #7FRZOY", region: "ASIA" },
-    { name: "Intrepidus #T2D70P", region: "ASIA" },
-    { name: "S_A_N_T_I #69I3DV", region: "EU" },
-    { name: "LuigiToan #ZSCKH5", region: "ASIA" },
+    { name: "Chan", code: "#S5MPFA" },
+    { name: "Chick: Ghoul", code: "#OM2Z2I" },
+    { name: "iWin: iWin", code: "#8KK5DM" },
+    { name: "OneTapMaybe: OneTapMaybe", code: "#1F7JJ6" },
+    { name: "Ish: raven", code: "#37A3JS" },
+    { name: "Sylkie: entity / Sylkie", code: "#9WREV0 / #7FRZOY" },
+    { name: "Expert: CrackedYOU", code: "#FUYR7K" },
+    { name: "Tuk: tuk", code: "#MREHTT" },
+    { name: "Yip: YipHerng", code: "#TTTVBJ" },
+    { name: "Comet: comet", code: "#FALCON" },
+    { name: "0. Axis", code: "#KPU8ZM" },
+    { name: "Vion: Vion", code: "#P776X1" },
   ];
 
   const requirementsList = [
@@ -141,11 +143,11 @@ export default function Requirements() {
                 <div 
                   key={idx}
                   onMouseEnter={() => sfx.playHover()}
-                  className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-purple-500/15 hover:border-cyan-400/40 transition-all hover:scale-[1.02]"
+                  className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-purple-500/15 hover:border-cyan-400/40 transition-all hover:scale-[1.02] gap-2"
                 >
-                  <span className="text-sm font-bold text-gray-200 truncate">{trainer.name}</span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-cyan-300 uppercase tracking-wider border border-purple-400/20">
-                    {trainer.region}
+                  <span className="text-xs sm:text-sm font-bold text-gray-200 truncate">{trainer.name}</span>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-purple-500/20 text-cyan-300 uppercase tracking-wider border border-purple-400/20 font-mono whitespace-nowrap shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+                    {trainer.code}
                   </span>
                 </div>
               ))}

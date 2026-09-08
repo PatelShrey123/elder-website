@@ -4,7 +4,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { savePrivateFile } from "@/lib/storage";
 
-const PRIMARY_SUBMIT_WEBHOOK = "https://discord.com/api/webhooks/1545038469351473213/6D2N32r-VR2SMFdiUAMEwnX6wUyCP0raDLjDIKeAmQ1SyqMHfUo3bIym341Nk7IoSx2i";
 const OFFICER_ROLE_ID = process.env.DISCORD_OFFICER_ROLE_ID || "1369836381647405067";
 
 export async function POST(request: Request) {
@@ -64,76 +63,85 @@ export async function POST(request: Request) {
       ? uploadResult.fileName
       : `data:${file.type || "image/png"};base64,${buffer.toString("base64")}`;
 
-    // 1. POST Webhook to Discord (Webhook #1 - Ping Officers with embedded Profile Screenshot & quick action link)
-    const webhookUrl = PRIMARY_SUBMIT_WEBHOOK;
-    const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
-    const proofFilename = "profile_screenshot.png";
+    // 1. POST Webhook to Discord (Read securely from Vercel Environment Variables only)
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (webhookUrl && webhookUrl.startsWith("http")) {
+      const dashboardUrl = `${process.env.NEXTAUTH_URL || "https://elderapply.vercel.app"}/staff`;
+      const proofFilename = "profile_screenshot.png";
 
-    const embedData = {
-      title: "⚔️ New Elder Clan Application",
-      description: `A new warrior has submitted their application for the upcoming Clan War.\n\n👉 **[Click Here to Open Officer Panel & Review](${dashboardUrl})**`,
-      color: 0x9333ea, // Purple neon
-      fields: [
-        { name: "👤 Discord Applicant", value: `<@${user.id}> (${user.name})`, inline: true },
-        { name: "🎮 Kirka.io User ID", value: `\`${kirkaId}\``, inline: true },
-        { name: "⚡ Weekly Score", value: `**${weeklyXp.toLocaleString()} XP**`, inline: true },
-        { name: "🛡️ Previous Clan", value: previousClan ? `\`${previousClan}\`` : "*None*", inline: true },
-        { name: "❓ Why did they leave?", value: whyLeft || "*N/A*" },
-        { name: "🔥 Why they want to join Elder", value: whyJoin },
-      ],
-      image: {
-        url: `attachment://${proofFilename}`,
-      },
-      footer: {
-        text: "Elder Recruitment System • Quick Action: Click link above to Accept/Reject",
-        icon_url: "https://elderapply.vercel.app/elder-logo.jpg",
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    const payloadJson = {
-      content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
-      username: "Elder Clan Recruiter",
-      avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
-      attachments: [
-        {
-          id: 0,
-          filename: proofFilename,
-          description: "Profile Screenshot",
+      const embedData = {
+        title: "⚔️ New Elder Clan Application",
+        description: `A new warrior has submitted their application for the upcoming Clan War.\n\n👉 **[Click Here to Open Officer Panel & Review](${dashboardUrl})**`,
+        color: 0x9333ea, // Purple neon
+        fields: [
+          { name: "👤 Discord Applicant", value: `<@${user.id}> (${user.name})`, inline: true },
+          { name: "🎮 Kirka.io User ID", value: `\`${kirkaId}\``, inline: true },
+          { name: "⚡ Weekly Score", value: `**${weeklyXp.toLocaleString()} XP**`, inline: true },
+          { name: "🛡️ Previous Clan", value: previousClan ? `\`${previousClan}\`` : "*None*", inline: true },
+          { name: "❓ Why did they leave?", value: whyLeft || "*N/A*" },
+          { name: "🔥 Why they want to join Elder", value: whyJoin },
+        ],
+        image: {
+          url: `attachment://${proofFilename}`,
         },
-      ],
-      embeds: [embedData],
-    };
+        footer: {
+          text: "Elder Recruitment System • Quick Action: Click link above to Accept/Reject",
+          icon_url: "https://elderapply.vercel.app/elder-logo.jpg",
+        },
+        timestamp: new Date().toISOString(),
+      };
 
-    // Send multipart FormData with File object
-    try {
-      const webhookFormData = new FormData();
-      webhookFormData.append("payload_json", JSON.stringify(payloadJson));
-      const imageFile = new File([buffer], proofFilename, { type: file.type || "image/png" });
-      webhookFormData.append("files[0]", imageFile, proofFilename);
+      const payloadJson = {
+        content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
+        username: "Elder Clan Recruiter",
+        avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+        allowed_mentions: {
+          roles: [OFFICER_ROLE_ID],
+          parse: [], // Disallows @everyone, @here, and arbitrary role pings
+        },
+        attachments: [
+          {
+            id: 0,
+            filename: proofFilename,
+            description: "Profile Screenshot",
+          },
+        ],
+        embeds: [embedData],
+      };
 
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        body: webhookFormData,
-      });
+      try {
+        const webhookFormData = new FormData();
+        webhookFormData.append("payload_json", JSON.stringify(payloadJson));
+        const imageFile = new File([buffer], proofFilename, { type: file.type || "image/png" });
+        webhookFormData.append("files[0]", imageFile, proofFilename);
 
-      if (!res.ok) {
-        console.warn("Multipart submit webhook status:", res.status, await res.text());
-        // Fallback to direct JSON without attachment if multipart had any issue
-        const jsonFallback = {
-          content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
-          username: "Elder Clan Recruiter",
-          avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
-          embeds: [{ ...embedData, image: undefined }],
-        };
-        await fetch(webhookUrl, {
+        const res = await fetch(webhookUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(jsonFallback),
+          body: webhookFormData,
         });
+
+        if (!res.ok) {
+          console.warn("Multipart submit webhook non-ok status:", res.status, await res.text());
+          // Fallback to direct JSON without attachment
+          const jsonFallback = {
+            content: `<@&${OFFICER_ROLE_ID}> 🚨 **New Clan Application Received!**`,
+            username: "Elder Clan Recruiter",
+            avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+            allowed_mentions: {
+              roles: [OFFICER_ROLE_ID],
+              parse: [],
+            },
+            embeds: [{ ...embedData, image: undefined }],
+          };
+          await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(jsonFallback),
+          });
+        }
+      } catch (webhookErr) {
+        console.warn("Webhook dispatch exception:", webhookErr);
       }
-    } catch (webhookErr) {
-      console.warn("Webhook dispatch exception:", webhookErr);
     }
 
     // 2. Save Application to DB

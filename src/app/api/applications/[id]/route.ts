@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { sendDiscordDM } from "@/lib/discord";
 import { deletePrivateFile } from "@/lib/storage";
 
-const PRIMARY_DECISION_WEBHOOK = "https://discord.com/api/webhooks/1513053814863696036/XxsSO8L-tCBfsC5pYiGJzKS5rK-l4_RCxeQ7iBND0i1nUWhghVYCWoKbhgV53y4stHzo";
+const OFFICER_ROLE_ID = process.env.DISCORD_OFFICER_ROLE_ID || "1369836381647405067";
 
 export async function POST(
   request: Request,
@@ -45,59 +45,62 @@ export async function POST(
     // Update DB
     const updatedApplication = await db.updateApplicationStatus(id, status, reason);
 
-    // Send Webhook to Results / Decisions Channel
-    const decisionWebhookUrl = PRIMARY_DECISION_WEBHOOK;
-    try {
-      const isAccepted = status === "ACCEPTED";
-      const title = isAccepted
-        ? "🎉 Application Approved — Welcome to Elder Clan Training!"
-        : "📋 Application Status Update — Elder Clan";
-      const color = isAccepted ? 0x22c55e : 0xef4444; // Green vs Red
+    // Send Webhook to Results / Decisions Channel (Read securely from Vercel Environment Variables only)
+    const decisionWebhookUrl = process.env.DISCORD_DECISION_WEBHOOK_URL;
+    if (decisionWebhookUrl && decisionWebhookUrl.startsWith("http")) {
+      try {
+        const isAccepted = status === "ACCEPTED";
+        const title = isAccepted
+          ? "🎉 Application Approved — Welcome to Elder Clan Training!"
+          : "📋 Application Status Update — Elder Clan";
+        const color = isAccepted ? 0x22c55e : 0xef4444; // Green vs Red
 
-      let content = `<@${application.discordId}>`;
-      let description = "";
+        let content = `<@${application.discordId}>`;
+        let description = "";
 
-      if (isAccepted) {
-        description = `Congratulations **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`)! 🎉\n\n` +
-          `Your application to join **Elder Clan** has been **ACCEPTED FOR TRAINING** for the upcoming Clan War roster! ⚔️🔥\n\n` +
-          `👉 **Next Steps**: Please contact an **Officer** or **Mod** to get trained and added to the official training channel!\n\n` +
-          `📝 **Officer Notes & Instructions**:\n>>> ${reason}\n\n` +
-          `🛡️ **Reviewed by Officer**: <@${officer.id}> (${officer.name || "Officer"})`;
-      } else {
-        description = `Hello **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`),\n\n` +
-          `Thank you so much for taking the time to apply for **Elder Clan**. We truly appreciate your interest and gameplay dedication!\n\n` +
-          `After reviewing your application, profile screenshot, and stats, we unfortunately cannot offer you a roster spot for this specific Clan War. **Please don't be discouraged!** Keep practicing, grind up your weekly XP, and we warmly invite you to apply again for the next Clan War! ⚔️\n\n` +
-          `📝 **Officer Feedback / Reason**:\n>>> ${reason}\n\n` +
-          `🛡️ **Reviewed by Officer**: <@${officer.id}> (${officer.name || "Officer"})`;
+        if (isAccepted) {
+          description = `Congratulations **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`)! 🎉\n\n` +
+            `Your application to join **Elder Clan** has been **ACCEPTED FOR TRAINING** for the upcoming Clan War roster! ⚔️🔥\n\n` +
+            `👉 **Next Steps**: Please contact an **Officer** or **Mod** to get trained and added to the official training channel!\n\n` +
+            `📝 **Officer Notes & Instructions**:\n>>> ${reason}\n\n` +
+            `🛡️ **Reviewed by Officer**: <@${officer.id}> (${officer.name || "Officer"})`;
+        } else {
+          description = `Hello **${application.discordUsername}** (Kirka ID: \`${application.kirkaId}\`),\n\n` +
+            `Thank you so much for taking the time to apply for **Elder Clan**. We truly appreciate your interest and gameplay dedication!\n\n` +
+            `After reviewing your application, profile screenshot, and stats, we unfortunately cannot offer you a roster spot for this specific Clan War. **Please don't be discouraged!** Keep practicing, grind up your weekly XP, and we warmly invite you to apply again for the next Clan War! ⚔️\n\n` +
+            `📝 **Officer Feedback / Reason**:\n>>> ${reason}\n\n` +
+            `🛡️ **Reviewed by Officer**: <@${officer.id}> (${officer.name || "Officer"})`;
+        }
+
+        const embed = {
+          title,
+          description,
+          color,
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: "Elder Clan Official Recruitment • elderapply.vercel.app",
+            icon_url: "https://elderapply.vercel.app/elder-logo.jpg",
+          },
+        };
+
+        await fetch(decisionWebhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "Elder Clan Decisions",
+            avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
+            content,
+            allowed_mentions: {
+              users: [application.discordId, officer.id],
+              roles: [OFFICER_ROLE_ID],
+              parse: [], // Disallows @everyone, @here
+            },
+            embeds: [embed],
+          }),
+        });
+      } catch (webhookErr) {
+        console.error("Error posting to decision webhook:", webhookErr);
       }
-
-      const embed = {
-        title,
-        description,
-        color,
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: "Elder Clan Official Recruitment • elderapply.vercel.app",
-          icon_url: "https://elderapply.vercel.app/elder-logo.jpg",
-        },
-      };
-
-      const webhookRes = await fetch(decisionWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: "Elder Clan Decisions",
-          avatar_url: "https://elderapply.vercel.app/elder-logo.jpg",
-          content,
-          embeds: [embed],
-        }),
-      });
-
-      if (!webhookRes.ok) {
-        console.warn("Decision webhook non-ok status:", webhookRes.status, await webhookRes.text());
-      }
-    } catch (webhookErr) {
-      console.error("Error posting to decision webhook:", webhookErr);
     }
 
     // Send Discord DM using Bot Token (if configured)
